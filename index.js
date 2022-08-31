@@ -1,12 +1,13 @@
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, HeadObjectCommand } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import { parse } from "csv-parse";
+import { stringify } from "csv-stringify/sync";
 import fs from "fs";
 import axios from "axios";
 const REGION = "us-east-1";
 const s3Client = new S3Client({ region: REGION });
 const BUCKET = "mylawcle.com";
-const START_FROM = 322;
+const START_FROM = 0;
 
 // Create the Amazon S3 bucket.
 export const upload = async (fileName, folder) => {
@@ -38,6 +39,17 @@ export const upload = async (fileName, folder) => {
   console.log("Upload completed " + folder + "/" + fileName);
 };
 
+export const fileExists = async (fileName, folder) => {
+  const response = await s3Client.send(
+    new HeadObjectCommand({
+      Bucket: BUCKET,
+      Key: folder + "/" + fileName,
+    })
+  );
+
+  return response["$metadata"].httpStatusCode === 200;
+};
+
 export const download = async (url, fileName) => {
   console.log("Downloading " + fileName);
 
@@ -66,6 +78,7 @@ const processFile = async () => {
 const records = await processFile();
 
 let count = 0;
+let newData = [];
 for (const row of records) {
   count++;
 
@@ -80,14 +93,28 @@ for (const row of records) {
     const videoLink = row[4];
     const resourceLink = row[5];
 
+    let newRecord = {};
+    newRecord.title = title;
+
     if (videoLink && videoLink.toLowerCase() !== "na") {
       const videoUrl = new URL(videoLink);
       const videoPath = videoUrl.pathname;
       const videoFileName = videoPath.substring(videoPath.lastIndexOf("/") + 1);
 
-      await download(videoLink, videoFileName);
-      await upload(videoFileName, productId);
-      fs.unlinkSync(videoFileName);
+      if (!fileExists(videoFileName, productId)) {
+        await download(videoLink, videoFileName);
+        await upload(videoFileName, productId);
+        fs.unlinkSync(videoFileName);
+      } else {
+        console.log("File exists " + productId + "/" + videoFileName);
+      }
+      newRecord.video_1_link =
+        "https://s3.amazonaws.com/" +
+        BUCKET +
+        "/" +
+        productId +
+        "/" +
+        videoFileName;
     }
 
     if (resourceLink && resourceLink.toLowerCase() !== "na") {
@@ -97,11 +124,25 @@ for (const row of records) {
         resourcePath.lastIndexOf("/") + 1
       );
 
-      await download(resourceLink, resourceFileName);
-      await upload(resourceFileName, productId);
-      fs.unlinkSync(resourceFileName);
+      if (!fileExists(resourceFileName, productId)) {
+        await download(resourceLink, resourceFileName);
+        await upload(resourceFileName, productId);
+        fs.unlinkSync(resourceFileName);
+      } else {
+        console.log("File exists " + productId + "/" + resourceFileName);
+      }
+      newRecord.video_1_resource_1 =
+        "https://s3.amazonaws.com/" +
+        BUCKET +
+        "/" +
+        productId +
+        "/" +
+        resourceFileName;
     }
+    newData.push(newRecord);
   } catch (e) {
     console.error(e.message);
   }
 }
+
+fs.writeFileSync("result.csv", stringify(newData, { header: true }));

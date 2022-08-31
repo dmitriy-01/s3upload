@@ -13,7 +13,9 @@
     "@aws-sdk/client-s3": "^3.160.0",
     "@aws-sdk/lib-storage": "^3.160.0",
     "axios": "^0.27.2",
-    "csv-parse": "^5.3.0"
+    "csv-parse": "^5.3.0",
+    "csv-stringify": "^6.2.0",
+    "csv-writer": "^1.6.0"
   },
   "type": "module"
 }
