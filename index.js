@@ -6,7 +6,7 @@ import axios from "axios";
 const REGION = "us-east-1";
 const s3Client = new S3Client({ region: REGION });
 const BUCKET = "mylawcle.com";
-const START_FROM = 87;
+const START_FROM = 322;
 
 // Create the Amazon S3 bucket.
 export const upload = async (fileName, folder) => {
@@ -74,30 +74,34 @@ for (const row of records) {
   }
   console.log("Record " + count + " of " + records.length + ":");
 
-  const productId = row[2];
-  const title = row[3];
-  const videoLink = row[4];
-  const resourceLink = row[5];
+  try {
+    const productId = row[2];
+    const title = row[3];
+    const videoLink = row[4];
+    const resourceLink = row[5];
 
-  if (videoLink && videoLink.toLowerCase() !== "na") {
-    const videoUrl = new URL(videoLink);
-    const videoPath = videoUrl.pathname;
-    const videoFileName = videoPath.substring(videoPath.lastIndexOf("/") + 1);
+    if (videoLink && videoLink.toLowerCase() !== "na") {
+      const videoUrl = new URL(videoLink);
+      const videoPath = videoUrl.pathname;
+      const videoFileName = videoPath.substring(videoPath.lastIndexOf("/") + 1);
 
-    await download(videoLink, videoFileName);
-    await upload(videoFileName, productId);
-    fs.unlinkSync(videoFileName);
-  }
+      await download(videoLink, videoFileName);
+      await upload(videoFileName, productId);
+      fs.unlinkSync(videoFileName);
+    }
 
-  if (resourceLink && resourceLink.toLowerCase() !== "na") {
-    const resourceUrl = new URL(resourceLink);
-    const resourcePath = resourceUrl.pathname;
-    const resourceFileName = resourcePath.substring(
-      resourcePath.lastIndexOf("/") + 1
-    );
+    if (resourceLink && resourceLink.toLowerCase() !== "na") {
+      const resourceUrl = new URL(resourceLink);
+      const resourcePath = resourceUrl.pathname;
+      const resourceFileName = resourcePath.substring(
+        resourcePath.lastIndexOf("/") + 1
+      );
 
-    await download(resourceLink, resourceFileName);
-    await upload(resourceFileName, productId);
-    fs.unlinkSync(resourceFileName);
+      await download(resourceLink, resourceFileName);
+      await upload(resourceFileName, productId);
+      fs.unlinkSync(resourceFileName);
+    }
+  } catch (e) {
+    console.error(e.message);
   }
 }
